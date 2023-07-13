@@ -12,11 +12,21 @@ fn_prefix <- function(var_name){
   }else if(typeof(var_name) == "list"){
     prefix <- 'comb'
     for(element in var_name){
-      print(element)
-      bioclim <- element[1]
-      min <- element[2]
-      max <- element[3]
-      prefix <- paste0(prefix, bioclim, '-', min, '-', max, "_")
+      if(typeof(element) == "character"){
+        if(element == "elevation"){
+          prefix <- paste("elevation", min_ele, sep="_")
+        }else if(element %in% c("testolin_alpine_cluster", "GMBA")){
+          prefix <- paste(element, sep="_")
+        }else if(grepl("growing_season", element, fixed = TRUE)){
+          prefix <- paste(prefix, element, sep="_")
+        }
+      }else{
+        print(element)
+        bioclim <- element[1]
+        min <- element[2]
+        max <- element[3]
+        prefix <- paste0(prefix, bioclim, '-', min, '-', max, "_")
+      }
     }
   }else{
     bioclim <- var_name[1]
@@ -30,57 +40,59 @@ fn_prefix <- function(var_name){
 
 load_shp <- function(var_comb){
   prefix <- fn_prefix(var_comb)
-  pp <- shapefile(paste(prefix, 'shape.shp', sep="_"))
-  
+  pp <- st_read(paste(prefix, 'shape.shp', sep="_"))
   return(pp)
 }
 
 load_grd <- function(var_comb){
   prefix <- fn_prefix(var_comb)
-  grd <- raster(paste(prefix, 'mask.grd', sep="_"))
-  plot(grd)
+  grd <- read_stars(paste(prefix, 'mask.grd', sep="_"))
   return(grd)
 }
 
 wrapperInput <- function(area, var_name,  climatename){
-  source(paste0(base, 'ClimateAnalyzer/make_polygon_raster.R'))
+  source(paste0(base, 'ClimateAnalyzer/makePolygonDelim.R'))
   source(paste0(base, 'ClimateAnalyzer/makeClimateData.R'))
   source(paste0(base, 'ClimateAnalyzer/makeElevationData.R'))
-  source(paste0(base, 'ClimateAnalyzer/set_variables.R'))
-  source(paste0(base, '10_get_predefined_polygon.R'))
-  
-
+  source(paste0(base, 'ClimateAnalyzer/00_set_variables.R'))
+  assign("area", area, envir = .GlobalEnv)
   setwd(main_wd)
-  
   dir.create(file.path(area), showWarnings = FALSE)
   setwd(area)
   dir.create(file.path(climatename), showWarnings = FALSE)
   setwd(climatename)
-  
   prefix <- fn_prefix(var_name)
   dir.create(file.path(prefix), showWarnings = FALSE)
   setwd(file.path(prefix))
   
+  ele.main <- get_elevation(area, zoom_level, crs, res)
+  assign("ele.main", ele.main, envir = .GlobalEnv)
+  
   pp <- make_pol(var_name, climatename, area)
+  #print(st_dimension(pp))
+  if(!is.na(pp)){
+    plot(pp)
+    
+    print('analyze elevation')
+    #plot_elev_treshold_locality(area, var_name, pp, elevation_threshold) # TODO no content in function currently
+    print(area)
+    
  
-  plot(pp)
-  print('analyze elevation')
-  plot_elev_treshold_locality(area, var_name, pp, elevation_threshold)
-  get_elevation_profile(var_name, pp)
-  get_area_size(pp)
+    ele=ele.main
+    get_elevation_profile(var_name, pp, ele) 
+    
+    print("analyze climate")
+    generate_climate_data_polygon(var_name, climatename, area)
+    
+    glob <- make_pca(var_name, climatename)
+    make_uncorrelated_pca(var_name, glob)  
+  }
   
-  print("analyze climate")
-  generate_climate_data_polygon(var_name, climatename)
-  generate_climate_data_polygon(var_name, climatename, area, tropical = TRUE)
-  
-  glob <- make_pca(var_name, climatename)
-  make_uncorrelated_pca(var_name, glob)
 }
 
 make_pol <- function(var_name, climatename, area){
-  if(typeof(var_name) == "character"){
+  if(typeof(var_name) == "character"){ # non combined layers
     prefix <- fn_prefix(var_name)
-    
     setwd(main_wd)
     setwd(area)
     setwd(climatename)
@@ -93,31 +105,48 @@ make_pol <- function(var_name, climatename, area){
       pp <- makeGrowingSeasonPol(var_name, area)
     }
   }else if(typeof(var_name) == "list"){
-    for(element in var_name){
-      #print(element)
-      
-      prefix <- fn_prefix(element)
-      setwd(main_wd)
-      setwd(area)
-      setwd(climatename)
-      dir.create(file.path(prefix), showWarnings = FALSE)
-      setwd(prefix)
-      
-      pp_sub <- MakeReducePolygonClim(area, element, climatename)
-    }
     prefix <- fn_prefix(var_name)
-    
+    fn_pp <- paste0(prefix, '_shape.shp')
+    if(!file.exists(fn_pp)){
+      for(element in var_name){
+        prefix2 <- fn_prefix(element)
+        setwd(main_wd)
+        setwd(area)
+        setwd(climatename)
+        dir.create(file.path(prefix2), showWarnings = FALSE)
+        setwd(prefix2)
+        print(element)
+        if(!typeof(element) == "double"){
+          if(element == "elevation"){
+            pp <- MakeReducePolygonElevation(area, element)
+          }else if(grepl("growing_season", element, fixed = TRUE)){
+            pp <- makeGrowingSeasonPol(element, area)
+          }
+        }else{
+          pp = MakeReducePolygonClim(area, element, climatename)
+        }
+      }
+    }
+
     setwd(main_wd)
     setwd(area)
     setwd(climatename)
     setwd(prefix)
     pp <- MakeCombinePolygons(area, var_name)
+    print(pp)
+    #print(st_dimension(pp))
     
+    if(  is.na(pp) || st_dimension(pp) < 2) {
+ #   if(st_dimension(pp) < 2){
+      print('Stopping as no overlapping areas had been retrieved.')
+      return(NA)
+      }
   }else{
-    
     pp <- MakeReducePolygonClim(area, var_name, climatename)
-    
   }
+  pp = st_as_sf(pp)
+  pp = st_union(pp)
+  pp= st_make_valid(pp)
   return(pp)
 }
 
@@ -131,8 +160,12 @@ compare_extent <-function(var_name1, var_name2, area1, climatename1,
   if(is.na(area2)){
     area2 <- area1
     single_area <- TRUE
-    
   }
+  
+  ele.main <- get_elevation(area1, zoom_level, crs, res)
+  assign("ele.main", ele.main, envir = .GlobalEnv)
+  ele = ele.main
+  
   print("load 1")
   prefix1 <- fn_prefix(var_name1)
   setwd(main_wd)
@@ -141,9 +174,12 @@ compare_extent <-function(var_name1, var_name2, area1, climatename1,
   print(prefix1)
   setwd(prefix1)
   pol1 <- make_pol(var_name1, climatename1, area1)
-  
+  fn1 = paste0(prefix1, "elevation.RDA")
+  ele1 = rasterize_polygon(var_name1, pol1, ele, fn1)
   plot(pol1)
-  clim1 <- generate_climate_data_polygon(var_name1, climatename1, area1, tropical=TRUE)
+  #clim1 <- generate_climate_data_polygon(var_name1, climatename1, area1, tropical=TRUE)
+  clim1 <- generate_climate_data_polygon(var_name1, climatename1, area1, tropical=FALSE)
+  
   
   print("load 2")
   prefix2 <- fn_prefix(var_name2)
@@ -152,8 +188,10 @@ compare_extent <-function(var_name1, var_name2, area1, climatename1,
   setwd(climatename2)
   setwd(prefix2)
   pol2 <- make_pol(var_name2, climatename2, area2)
-  plot(pol2)
-  clim2 <- generate_climate_data_polygon(var_name2, climatename2, area2, tropical=TRUE)
+  fn2 = paste0(prefix2, "elevation.RDA")
+  ele2 = rasterize_polygon(var_name2, pol2, ele, fn2)
+  #clim2 <- generate_climate_data_polygon(var_name2, climatename2, area2, tropical=TRUE)
+  clim2 <- generate_climate_data_polygon(var_name2, climatename2, area2, tropical=FALSE)
   
   setwd(main_wd)
   
@@ -162,13 +200,42 @@ compare_extent <-function(var_name1, var_name2, area1, climatename1,
     
     setwd(area1)
     fn <- paste(area1, prefix1, prefix2, climatename1, climatename2 , "overlap_area.png", sep="_")
+    #comparePolygons(pol1, pol2, area1, fn, tropical=TRUE)
+    plot(pol1)
+    plot(pol2, add=T)
     comparePolygons(pol1, pol2, area1, fn, tropical=FALSE)
+    
+    fn <- paste(area1, prefix1, prefix2, climatename1, climatename2 , "overlap_hist.png", sep="_")
+    #compare_hist(ele1, ele2, area1, fn, tropical=TRUE)
+    compare_hist(ele1, ele2, area1, fn, tropical=FALSE)
   }
- 
   print("compare climate")
   fn <- paste(area1, area2, prefix1, climatename1, prefix2, climatename2, sep="_")
   compare_climate(clim1, clim2, fn)
+}
+   
 
+compare_hist <- function(ele1, ele2, area, fn, tropical){
+  print("compare hist")
+  # 
+  ele1 = ele1[ele1>=0]
+  ele2 = ele2[ele2>=0]
+  
+  png(fn)
+  hist(ele1, maxpixels = 1000000,
+       breaks = seq(0,10000,by=200),
+       main="Histogram of elevation",
+       col='blue',  # changes bin color
+       xlab= "Elevation (m)")  # label the x-axis
+  #with(mts_gmba_rr, hist(mts_gmba_rr[mts_gmba_rr >= 0], breaks=))
+  hist(ele2,maxpixels = 1000000,
+       breaks = seq(0,10000,by=200),
+       add=TRUE,
+       main="Histogram of elevation",
+       col=rgb(1,0,0,0.5),  # changes bin color
+       xlab= "Elevation (m)")  # label the x-axis
+  dev.off()
+  
 }
 
 
@@ -181,36 +248,181 @@ load_climate_data <- function(var_name1, climatename1, area1, tropical){
   setwd(prefix1)
   clim1 <- generate_climate_data_polygon(var_name1, climatename1, area1, tropical=tropical)
   setwd(main_wd)
-  return(clim1[, 2:20])
+  if(ncol(clim1) == 20){
+    clim1 = clim1[, 2:20]
+  }
+  clim1 = as.data.frame(clim1)
+  return(clim1)
 }
 
 
-boxplot_all <- function(var_name1, var_name2, var_name3, var_name4, area1, area2, area3, area4, climatename, tropical=FALSE){
-  clim1 <- load_climate_data(var_name1, climatename, area1, tropical=tropical)
-  clim2 <- load_climate_data(var_name2, climatename, area2, tropical=tropical)
-  clim3 <- load_climate_data(var_name3, climatename, area3, tropical=tropical)
-  clim4 <- load_climate_data(var_name4, climatename, area4, tropical=tropical)
+boxplot_all_area <- function(var_name1, area1, area2, area3, area4, climatename, tropical=FALSE){
+  prefix1 = fn_prefix(var_name1)
+  print(getwd())
+
   
+  clim1 <- load_climate_data(var_name1, climatename, area1, tropical=tropical)
+  clim2 <- load_climate_data(var_name1, climatename, area2, tropical=tropical)
+  clim3 <- load_climate_data(var_name1, climatename, area3, tropical=tropical)
+  clim4 <- load_climate_data(var_name1, climatename, area4, tropical=tropical)
+  clim1 = translate_biovar(clim1)
+  clim2 = translate_biovar(clim2)
+  clim3 = translate_biovar(clim3)
+  clim4 = translate_biovar(clim4)
+  
+  d <- rbind(cbind(stack(clim1), group=area1), 
+             cbind(stack(clim2), group=area2),
+             cbind(stack(clim3), group=area3),
+             cbind(stack(clim4), group=area4))
+  
+  print(head(d))
+  
+  d$region <- factor(d$group,
+                         levels = c(area1, area2, area3, area4),ordered = TRUE)
+  
+  print(head(d))
+  my_comparisons <- list( c(area1, area2), c(area1, area3), c(area1, area4), c(area2, area3), c(area2, area4), c(area3, area4) )
+  p <- ggplot(d, aes(region, values)) +
+    geom_boxplot(aes(color=region), width=3.7, show.legend = FALSE) + # theme(legend.position="bottom") + 
+    facet_wrap(~ind, scales='free_y', ncol=4)  +
+    theme(axis.text.x = element_text(angle = 45, hjust=0.75) )+
+    scale_x_discrete(labels=c("SouthAmerica" = "tropalpAndes", 
+                              "Asia" = "tropalpAsia",
+                              "Africa" = "Afroalpine",
+                              "Hawaii" = "tropalpHawaii"))+
+    scale_color_manual(values=c("orange", "#FC4E07",  "#00AFBB", "purple"))+
+    #scale_x_discrete(labels = c('tropalpAndes','tropalpAsia','Afroalpine', "tropalpHawaii"))+
+    theme(axis.title.x=element_blank())
+ # p = p + theme(plot.title=element_text(size=6, hjust=0.5, face="italic", color="red")) #+   stat_compare_means()
+  
+  #+
+    #scale_color_manual(values = c("#00AFBB", "#E7B800"))
+# p=  p + stat_compare_means(method = "t.test")
+#   # Display the significance level instead of the p-value
+#   # Adjust label position
+# p=p + compare_means(
+#    aes(label = ..p.signif..), label.x = 1.5, label.y = 40
+# )
 
+  
+  
+# p = p + stat_compare_means(comparisons = my_comparisons, label="p.signif",  size =2)
 
-  d <- rbind(cbind(stack(clim1), group=paste(toString(var_name1), area1)), 
-             cbind(stack(clim2), group=paste(toString(var_name2), area2)),
-             cbind(stack(clim3), group=paste(toString(var_name3), area3)),
-             cbind(stack(clim4), group=paste(toString(var_name4), area4)))
+ p 
+  ggsave(paste("boxplot_climate_all", prefix1, climatename, ".png", sep="_"))
+}
 
+boxplot_all_climate <- function(var_name1, var_name2, area1, climatename, tropical=FALSE){
+  prefix1 = fn_prefix(var_name1)
+  prefix2 = fn_prefix(var_name2)
+  
+  clim1 <- load_climate_data(var_name1, climatename, area1, tropical=tropical)
+  clim2 <- load_climate_data(var_name2, climatename, area1, tropical=tropical)
+  clim1 = translate_biovar(clim1)
+  clim2 = translate_biovar(clim2)
+  
+  d <- rbind(cbind(stack(clim1), group=paste(toString(var_name1))), 
+             cbind(stack(clim2), group=paste(toString(var_name2))))
   
   p <- ggplot(d, aes(group, values)) +
     geom_boxplot(aes(color=group)) +
     facet_wrap(~ind, scales='free_y') #+
-    #scale_color_manual(values = c("#00AFBB", "#E7B800"))
- # p + stat_compare_means(method = "t.test")
+  
+  p 
+  ggsave(paste("boxplot_climate", prefix1, prefix2, area1, climatename, ".png", sep="_"))
+}
+
+boxplot_all_climate2 <- function(var_name1,  area_list, climatename1, climatename2, climatename3, tropical=FALSE){
+  prefix1 = fn_prefix(var_name1)
+  d = data.frame(matrix(ncol=4))
+  names(d) =  c("values" ,"ind" ,   "group", "area" )
+
+  for(area1 in area_list){
+    
+ 
+  clim1 <- load_climate_data(var_name1, climatename1, area1, tropical=tropical)
+  clim2 <- load_climate_data(var_name1, climatename2, area1, tropical=tropical)
+  clim3 <- load_climate_data(var_name1, climatename3, area1, tropical=tropical)
+ 
+  
+  clim1 = translate_biovar(clim1)
+  clim2 = translate_biovar(clim2)
+  clim3 = translate_biovar(clim3)
+  
+  # names(clim1) <- c(1:ncol(clim1))
+  # names(clim2) <- c(1:ncol(clim2))
+  # names(clim3) <- c(1:ncol(clim3))
+  # 
+  clim1 = recalculate_past_climate(clim1, climatename1)
+  clim2 = recalculate_past_climate(clim2, climatename2)
+  clim3 = recalculate_past_climate(clim3, climatename3)
+  
+
+  
+  d.s <- rbind(cbind(stack(clim1), group=climatename1), 
+             cbind(stack(clim2), group=climatename2), 
+             cbind(stack(clim3), group=climatename3))
+  d.s$area = area1
+  
+  d = rbind(d,d.s)
+  
+  }
+  print(d)
+  d = na.omit(d)
+  
+  
+  # 
+  # d[d$group == "Chelsa",] = "present"
+  # d[d$group == "mpi-esm",] = "MPI"
+  # d[d$group == " 'chelsa_miroc_esm'",] = "MIROC"
+  
+  d$area <- factor(d$area , levels=unlist(area_list))
+  neworder =c("Annual Mean Temp.", "Temp. Diurnal Range", "Isothermality", "Temp. Seasonality", "Max Temp. Warmest M.", "Min Temp. Coldest M.", 
+                                           "Temp. Annual Range", "Mean Temp. Wettest Qu.", "Mean Temp. Driest Qu.",  "Mean Temp. Warmest Qu.", "Mean Temp. Coldest Qu.",
+                                           "Annual Prec.", "Prec. Wettest M.", "Prec. Driest M.", "Prec. Seasonality", "Prec. Wettest Qu." , "Prec. Driest Qu.", "Prec. Warmest Qu.", "Prec. Coldest Qu." ) 
+    
+  
+  d2 = dplyr::arrange(transform(d,
+                    ind=factor(ind,levels=neworder)),ind)
+  print(d2)
+  
+  my_comparisons <- list( c(climatename1, climatename2), c(climatename1, climatename3), c(climatename2, climatename3))
+  
+  p <- ggplot(d2, aes(area, values, fill=group)) +
+    geom_boxplot(aes(fill=group), show.legend = TRUE)  +
+    facet_wrap(~ind, scales='free_y', ncol=3) + theme(legend.position="bottom") 
+  #scale_color_manual(values = c("#00AFBB", "#E7B800"))
+  # p + stat_compare_means(method = "t.test")
   # Display the significance level instead of the p-value
   # Adjust label position
- # p + compare_means(
-#    aes(label = ..p.signif..), label.x = 1.5, label.y = 40
- # )
+  # p + compare_means(
+  #    aes(label = ..p.signif..), label.x = 1.5, label.y = 40
+  # )
+  p = p + #stat_compare_means(comparisons = my_comparisons, label="p.signif",  size =2)+
+    theme(axis.text.x = element_text(angle = 45, hjust=0.75) ) +
+   scale_x_discrete(labels = c('tropalpAndes','tropalpAsia','Afroalpine'))+
+    scale_fill_discrete(labels=c("current", "MIROC", "MPI"))+
+    theme(axis.title.x=element_blank())
+  
+    #scale_fill_manual(values=c( "#00AFBB",  "#FC4E07", "orange"))
+  
   p 
-  ggsave(paste("boxplot_climate_all", climatename, ".png", sep="_"), p)
+
+  ggsave(paste("boxplot_climate", prefix1, climatename1, climatename2, climatename3, ".png", sep="_"), width=14, height=14, dpi=400)
+
+}
+
+translate_biovar <- function(df){
+  translate_df = c("Annual Mean Temp.", "Temp. Diurnal Range", "Isothermality", 
+                   "Temp. Seasonality", "Max Temp. Warmest M.", 
+                   "Min Temp. Coldest M.", "Temp. Annual Range", 
+                   "Mean Temp. Wettest Qu.", "Mean Temp. Driest Qu.", 
+                   "Mean Temp. Warmest Qu.", "Mean Temp. Coldest Qu.", "Annual Prec.", 
+                   "Prec. Wettest M.", "Prec. Driest M.", "Prec. Seasonality", 
+                   "Prec. Wettest Qu.", "Prec. Driest Qu.", 
+                   "Prec. Warmest Qu.", "Prec. Coldest Qu.")
+  names(df) = translate_df
+  return(df)
 }
 
 
@@ -253,11 +465,12 @@ boxplot_all_single <- function(var_name1, var_name2, var_name3, var_name4, area1
   # esub$'group' = as.factor(esub$'group')
   
   names(esub) <- c(select_var, "group")
-  # model <- lm(cbind(esub$'3', esub$'15') ~ esub$group, data=esub)
-  # model <- lm((esub$'3') ~ esub$group, data=esub)
-  # 
-  # Manova(model, test.statistic = "Pillai")
+  
+  
+  setwd("boxplot")
   for(bioclim in select_var){
+    fn = paste("boxplot_climate_all", bioclim, climatename, ".png", sep="_")
+    
     df1 <- sub_clim1[, c(bioclim, 6)]
     df2 <- sub_clim2[, c(bioclim, 6)]
     df3 <- sub_clim3[, c(bioclim, 6)]
@@ -270,8 +483,9 @@ boxplot_all_single <- function(var_name1, var_name2, var_name3, var_name4, area1
       geom_boxplot(aes(color=group)) 
     p <- p + stat_compare_means(comparisons = my_comparisons)
     p
-    ggsave(paste("boxplot_climate_all",bioclim, climatename, ".png", sep="_"), p)
+    ggsave(fn)
   }
+  setwd("../")
   
   clim1 <- load_climate_data(var_name1, climatename, area1, tropical=tropical)
   clim2 <- load_climate_data(var_name2, climatename, area2, tropical=tropical)
@@ -279,7 +493,6 @@ boxplot_all_single <- function(var_name1, var_name2, var_name3, var_name4, area1
   clim4 <- load_climate_data(var_name4, climatename, area4, tropical=tropical)
   
 
-  
   d <- rbind(cbind(stack(clim1), group=paste(toString(var_name1), area1)), 
              cbind(stack(clim2), group=paste(toString(var_name2), area2)),
              cbind(stack(clim3), group=paste(toString(var_name3), area3)),
@@ -293,7 +506,7 @@ boxplot_all_single <- function(var_name1, var_name2, var_name3, var_name4, area1
   M <-cor(glob, method="pearson")
   corrplot(M, type="upper", order="hclust")
   
-  
+  setwd("boxplots")
   p <- ggplot(d, aes(group, values)) +
     geom_boxplot(aes(color=group)) +
     facet_wrap(~ind, scales='free_y') #+
@@ -305,9 +518,8 @@ boxplot_all_single <- function(var_name1, var_name2, var_name3, var_name4, area1
   #    aes(label = ..p.signif..), label.x = 1.5, label.y = 40
   # )
   p 
-  ggsave(paste("boxplot_climate_all", climatename, ".png", sep="_"), p)
-  
-  
+  ggsave(paste("boxplot_climate_all", climatename, ".png", sep="_"))
+   
   clim1$group <- area1
   clim2$group <- area2
   clim3$group <- area3
@@ -327,8 +539,9 @@ boxplot_all_single <- function(var_name1, var_name2, var_name3, var_name4, area1
       geom_boxplot(aes(color=group)) 
     p <- p + stat_compare_means(comparisons = my_comparisons)
     p
-    ggsave(paste("boxplot_climate_all",bioclim, climatename, ".png", sep="_"), p)
+    ggsave(paste("boxplot_climate_all",bioclim, climatename, ".png", sep="_"))
   }
+  setwd("../")
 }
 
 load_glob <- function(var_name, area, climatename){
