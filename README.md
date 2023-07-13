@@ -1,6 +1,4 @@
 # ClimateAnalyzer
-## scripts to delimit areas based on bioclimatic variables
-
  
 ### Short introduction
 
