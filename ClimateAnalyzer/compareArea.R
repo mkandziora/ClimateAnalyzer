@@ -16,15 +16,12 @@ comparePolygons <- function(pp1, pp2, area, fn, tropical=FALSE){
        }else if(area == "Asia"){
          area2 <- "Kinabalu"
          proj <- "+proj=cea +lon_0=123.046875 +lat_ts=0 +datum=WGS84 +units=m +no_defs"
-         
        }else if(area == "Hawaii"){
          area2 <- "Hawaii"
          proj <- "+proj=aea +lon_0=-151.171875 +lat_1=9.6025264 +lat_2=25.5486889 +lat_0=17.5756077 +datum=WGS84 +units=m +no_defs"
-         
        }else if(area == "SouthAmerica"){
          area2 <- "Andes"
          proj <- "+proj=laea +lon_0=-63.984375 +lat_0=0 +datum=WGS84 +units=m +no_defs"
-         
        }
        
        ext <- get_extent_area(area2, ncol=3600, nrow=1800)
@@ -35,7 +32,6 @@ comparePolygons <- function(pp1, pp2, area, fn, tropical=FALSE){
        pp2 <- st_crop(pp2, st_bbox(ext))
        pp2 <- st_transform(pp2, CRSobj=st_crs(proj))
        pp2 = st_make_valid(pp2)
-       
        
      }else{
        proj = "+proj=longlat +datum=WGS84 +no_defs"
@@ -55,7 +51,6 @@ comparePolygons <- function(pp1, pp2, area, fn, tropical=FALSE){
      
      #####################################################################
      raster1 <- load_raster(pp1, ele)
-     
      
      pol_list = list(raster1)
      print("calc differences and overlap")
@@ -125,8 +120,6 @@ comparePolygons <- function(pp1, pp2, area, fn, tropical=FALSE){
      #######
      png(paste0("pol_", fn))
      plot(newmap, xlim = c(xmin, xmax), ylim = c(ymin, ymax), lwd = 0.2) # Andes
-     
-     
      plot(diffp1,
           col=colorRampPalette("#9E0037")(1), 
           border= colorRampPalette("#9E0037")(1),   # create a color ramp of grey colors
@@ -148,6 +141,7 @@ comparePolygons <- function(pp1, pp2, area, fn, tropical=FALSE){
     
 }
 
+
 get_largest_extent <- function(varlist){
   ymin=180
   xmin=180
@@ -163,18 +157,9 @@ get_largest_extent <- function(varlist){
     if(bb[4]> ymax){ymax = bb[4]}
   }
   
-  # 
-  # xmin <- xmin-5
-  # xmax <- xmax+5
-  # ymin <- ymin-5
-  # ymax <- ymax+5
-  
-
-  
   new_bb = st_bbox(c(xmin = as.integer(xmin), xmax = as.integer(xmax), ymax = as.integer(ymax), ymin = as.integer(ymin)), crs = st_crs(crs))
   return(new_bb)
 }
-
 
 
 calc_diff_pp <- function(pp1, pp2){
@@ -187,7 +172,6 @@ calc_diff_pp <- function(pp1, pp2){
   diffp = st_collection_extract(diffp, type = "POLYGON")
   return(diffp)
 }
-
 
 
 calculate_area_of_diff_insersect <- function(diffp1, diffp2, pp.intersect){
@@ -209,7 +193,6 @@ calculate_area_of_diff_insersect <- function(diffp1, diffp2, pp.intersect){
 }
 
 
-
 load_raster <- function(pp, ext){
   ext = terra::rast(as(ext, "Raster"))
   raster_1 = terra::rasterize(st_as_sf(pp), ext)
@@ -220,14 +203,12 @@ load_raster <- function(pp, ext){
 }
 
 
-
 get_area_size2 <- function(pp){
   area.calc = sum(st_area(pp)) #/ 1000000
   area.calc = units::set_units(area.calc, km^2)
   print(paste("Area (raster):", round(area.calc, digits=1),"km2; projection:", crs(pp)))
   return(area.calc)
 }
-
 
 
 get_area_size2.sameproj<- function(pp){
@@ -240,50 +221,5 @@ get_area_size2.sameproj<- function(pp){
   print(paste("Area:", round(area.calc, digits=1),"km2; projection:", crs(pp)))
   return(area.calc)
 }
-
-
-
-############################################
-# unused
-
-
-calculate_area_of_diff_insersect.calc <- function(pp1, pp2){
-  
-  diffp1 <- st_difference(pp1, pp2, dimension = "polygon")
-  diffp1 = st_make_valid(diffp1)
-  diffp1 = st_union(diffp1)
-  diffp1 = st_make_valid(diffp1)
-  
-  diffp2 <- st_difference(pp2, pp1, dimension = "polygon")
-  diffp2 = st_make_valid(diffp2)
-  diffp2 = st_union(diffp2)
-  diffp2 = st_make_valid(diffp2)
-  
-  pp.intersect = st_intersection(pp1, pp2, dimension = "polygon")
-  pp.intersect = st_make_valid(pp.intersect)
-  pp.intersect = st_union(pp.intersect)
-  pp.intersect = st_make_valid(pp.intersect)
-  
-  areasize_overlap <- get_area_size2(pp.intersect)
-  
-  areasize2 <- ""
-  
-  if(class(diffp1)[1] %in% c(  "sfc_MULTIPOLYGON", "sfc", "sf")){
-    areasize2 <- get_area_size2(diffp1)
-  }
-  areasize1 <- ""
-  if(class(diffp2)[1] %in% c(  "sfc_MULTIPOLYGON", "sfc", "sf")){
-    areasize1 <- get_area_size2(diffp2)
-  }
-  
-  area_legend <- paste("Overlap area", areasize_overlap, "\n diff1-2",
-                       areasize2, "\n diff2-1", areasize1)
-  
-  write.csv(paste("Overlap area, ", areasize_overlap, "\n diff1-2, ",
-                  areasize2, "\n diff2-1, ", areasize1), "areasize.txt")
-  print(area_legend)
-  return(area_legend)
-}
-
 
 
