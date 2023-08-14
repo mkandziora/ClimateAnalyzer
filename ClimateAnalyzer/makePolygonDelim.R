@@ -16,7 +16,6 @@ fix_crs_future <- function(climatename, area, wd){
     print(path_to_folder)
     files <- list.files(path=path_to_folder,   pattern='.tif',  full.names=TRUE ) #
     files_new = list.files(path=wd,   pattern='.tif',  full.names=FALSE ) #
-    
     for(fn in files){
       fn_new = strsplit(fn, "/")[[1]]
       fn_new = paste0("reproj", fn_new[length(fn_new)])
@@ -107,9 +106,6 @@ MakeCombinePolygons <- function(area, pol_comb_list){
 MakeReducePolygonClim <- function(area, var_name, climatename){
   
   print('create single polygon from climate')
-  print(var_name)  
-  print(climatename)
-  print(area)
 
   # assign bioclim_comb the variable you currently want to use: it will generate images and polygons. 
   # Look at the CHELSA_bio10_bioclim#.....png at the end, see if you like it, if not maybe make a new one, e.g. var_comb11_b
@@ -151,7 +147,7 @@ MakeReducePolygonClim <- function(area, var_name, climatename){
     grd_minmax <- raster_cut_to_minmax(grd_area, var_name, climatename, fn_grd)
     write_stars(grd_minmax, fn_grd2)
     pp_min_max <- make_minmax_polygon(grd_minmax)
-   print(st_dimension(pp_min_max))
+    print(st_dimension(pp_min_max))
     if(!is.na(st_dimension(pp_min_max))){
       print('some area retrieved...')
       write_sf(st_as_sf(pp_min_max), fn_pp)
@@ -159,7 +155,6 @@ MakeReducePolygonClim <- function(area, var_name, climatename){
       plot(grd_minmax)
       plot_grd(grd_minmax, area, fn=paste(prefix, 'mask.png', sep="_"))
       plot_grd(pp_min_max, area, fn=paste(prefix, 'shape.png', sep="_"))
-      
     }else{
       print(paste0("Setting ", prefix, " does not retrieve any suitable area in the region."))
       return(NA)
@@ -192,7 +187,6 @@ MakeReducePolygonElevation <- function(area, var_name){
     grd_minmax <- raster_cut_to_minmax(grd_area, "elevation")
     plot(grd_minmax)
     pp_min_max <- make_minmax_polygon(grd_minmax)
-    
     write_sf(pp_min_max, fn_pp, overwrite=TRUE)
     write_stars(grd_minmax, fn_grd2, overwrite=TRUE)
   }else{
@@ -245,8 +239,8 @@ makeGrowingSeasonPol <- function(var_name, area){
     gs_temp <- read_stars(fn_grd, proxy=F)      
     gs_temp_pp = read_sf(fn_pp)
     # gs_temp_pp = st_make_valid(gs_temp_pp)
-    print(st_is_valid(gs_temp_pp))
-  #########################################################################
+
+    #########################################################################
     print("make treeline model")
     
     plot(gs_length_pp)
@@ -393,20 +387,12 @@ plot_grd <- function(grd, area, fn){
   newmap <- rworldmap::getMap(resolution = "low")
   newmap <- spTransform(newmap, CRSobj=crs("+proj=longlat +datum=WGS84 +no_defs"))
   
-  
-  
   png(fn)
   plot(newmap, xlim = c(xmin, xmax), ylim = c(ymin, ymax), asp = 1, lwd = 0.2,
        axes=TRUE) # Andes
- try(
- 
-  plot(grd, col="red", border="red", add=TRUE)
-  # plot(grd, 
-  #      col=colorRampPalette("#9E0037")(255),
-  #      border=colorRampPalette("#9E0037")(255),
-  #      add=TRUE)
-  
- )
+  try(
+    plot(grd, col="red", border="red", add=TRUE)
+  )
   dev.off()
   
 }
@@ -525,28 +511,9 @@ fix_min_max <- function(climatename, var_name){
         max <- (max/10)
         
       }
-      # if(min == 0){
-      #   max <- (max/10+273)*10
-      # }else{
-      #   min <- (min/10+273)*10
-      #   max <- (max/10+273)*10
-      #   
-      # }
     }
-    # if(bioclim %in% c(2,3,4,7)){
-    #   print('adapt')
-    #   print(max)
-    #   print(min)
-    #   print(dwdfew)
-    #   if(min == 0){
-    #     max <- max/1000
-    #   }else{
-    #     min <- min/1000
-    #     max <- max/1000
-    #   }
-    # }
+  
     if(climatename %in% c("futureV21")){
-      
       if(bioclim %in% c(2,3,4,7)){
         print('adapt')
         print(max)
@@ -632,8 +599,8 @@ cut_to_continent <- function(mask2, area){
   plot(mask_3_b)
   writeRaster(mask_3_b,"tmp.grd", overwrite=TRUE)
   mask_3_b = read_stars("tmp.grd")
-  #unlink("tmp.grd")
-  #unlink("tmp.gri")
+  unlink("tmp.grd")
+  unlink("tmp.gri")
   
   return(mask_3_b)
   
@@ -658,10 +625,7 @@ make_minmax_polygon <- function(grd_minmax){
     pp <- st_make_valid(pp)
     pp = st_buffer(pp, 0.0)
     pp <- st_make_valid(pp)
-    print(st_is_valid(pp))
-    
     sf_use_s2(TRUE)
-    print(st_is_valid(pp))
     plot(pp)
   }else{
     pp =  st_union(pp)
@@ -669,7 +633,6 @@ make_minmax_polygon <- function(grd_minmax){
   }
   return(pp)
 }
-
 
 
 get_elevation <- function(area, zoom_level, crs, res){
@@ -697,11 +660,10 @@ get_elevation <- function(area, zoom_level, crs, res){
   return(ele)
 }
 
+
 recalculate_past_climate <- function(clim1, climatename1){
   if(climatename1 %in% c('chelsa_miroc_esm',"mpi-esm")){
    for(i in c(1, 5, 6, 8:11)){   # 2, 3, 7 excluded bc range, 4 excluded bc standard deviation
-  #for(i in 1:11){
-        
       clim1[, i] = (clim1[, i]/10-273)*10
    }
     for(i in c(12:19)){  
@@ -713,280 +675,3 @@ recalculate_past_climate <- function(clim1, climatename1){
   return(clim1)
 }
 
-
-
-#####################################################################################
-# unused
-
-makeGrowingSeasonPol.long <- function(var_name, area){
-  print('create growing season polygon')
-  prefix <- fn_prefix(var_name)
-  prefix_new <- paste(strsplit(prefix, "_")[[1]][1], strsplit(prefix, "_")[[1]][2], sep="_")
-  
-  calc_option = strsplit(var_name, "_")[[1]][5]
-  
-  fn_grd <- paste0(prefix, '_mask.grd')
-  fn_pp <- paste(prefix, 'shape.shp', sep="_")
-  if(!file.exists(fn_grd)){
-    fn_grd <- paste0(prefix, 'length_mask.grd')
-    fn_pp <- paste0(prefix, 'length_shape.shp')
-    if(!file.exists(fn_grd)){
-      print("make growing season length")
-      
-      fn_all <- paste0("../", prefix_new, "_", calc_option, '_all_length_mask.grd')
-      if(!file.exists(fn_all)){
-        files_path <- get_path_data("GSL")
-        files_stack <- get_GSarea(files_path, area)
-        
-        print("calc")
-        if(calc_option == "mean"){
-          mean_val <- st_apply(files_stack, fun = mean)
-        }else if(calc_option == "median"){
-          print(files_stack)
-          mean_val <-
-            files_stack %>%
-            st_apply(c("x", "y"), median, na.rm = TRUE) 
-          # mean_val <- st_apply(files_stack, MARGIN=1, FUN=median, na.rm=T)
-        }
-        print("add na")
-        
-        print("calc1 done")
-        print(mean_val)
-        #mean_val = st_as_sf(mean_val)
-        # mean_val[mean_val <= -25000] <- NA  # not working? for stars and only there to make it faster in raster package
-        print("write stars")
-        
-        write_stars(mean_val, fn_all, overwrite=TRUE, progress=T) # turn stars proxy into stars object by writing it out. alternative st_as_stars() - often other operations dont work otherwise
-        mean_val <- read_stars(fn_all, proxy = F)
-        
-        # plot_grd(mean_val, area, paste(prefix_new, calc_option, 'all_length_mask.png', sep="_"))
-      }else{
-        mean_val <- read_stars(fn_all, proxy = F)
-        print(mean_val)
-        
-      }
-      # plot(mean_val)
-      print("subset growth length")
-      grow_season_length <- as.integer(strsplit(var_name, "_")[[1]][4])
-      mean_val[mean_val < grow_season_length] <- NA # to calcualte area below treeline
-
-      write_stars(mean_val, "tmp.grd", overwrite=TRUE, progress=T)
-      mean_val = read_stars("tmp.grd", proxy=F)
-      
-      gs_length <- mean_val
-      gs_length_pp <- make_minmax_polygon(gs_length)
-
-      write_stars(gs_length, fn_grd, overwrite=TRUE)
-      gs_length <- read_stars(fn_grd, proxy = F)
-      write_sf(gs_length_pp, fn_pp, overwrite=TRUE)
-      
-      plot_grd(gs_length, area, paste(prefix, 'length_mask.png', sep="_"))
-      plot_grd(gs_length_pp, area, paste(prefix, 'length_pol.png', sep="_"))
-    }else{
-      gs_length <- read_stars(fn_grd, proxy=F)
-      gs_length_pp <- read_sf(fn_pp)
-    }
-    ##############################################################3
-    fn_pp <- paste(prefix, 'temp_shape.shp', sep="_")
-    fn_grd <- paste(prefix, 'temp_mask.grd', sep="_")
-    if(!file.exists(fn_grd)){
-      print("make growing season temp")
-      prefix_new <- paste(strsplit(prefix, "_")[[1]][1], strsplit(prefix, "_")[[1]][2], sep="_")
-      fn_all <- paste0("../", prefix_new, calc_option,'_all_temp_mask.grd')
-      if(!file.exists(fn_all)){
-        files_path <- get_path_data("GST")
-        files_stack <- get_GSarea(files_path, area)
-        print(files_stack)
-        print("calc2")
-        if(calc_option == "mean"){
-          mean_val <-
-            files_stack %>%
-            st_apply(c("x", "y"), mean, na.rm = TRUE) 
-        }else if(calc_option == "median"){
-          mean_val <-
-            files_stack %>%
-            st_apply(c("x", "y"), median, na.rm = TRUE) 
-        }
-        print("write stars temp")
-        #plot_grd(mean_val, area, paste(prefix_new, calc_option, 'all_temp_mask.png', sep="_"))
-        write_stars(mean_val, fn_all, overwrite=TRUE, progress=TRUE)
-        mean_val <- read_stars(fn_all, proxy = F)
-        
-      }else{
-        mean_val <- read_stars(fn_all, proxy=F)
-      }
-      print("subset season temp")
-      grow_season_temp <- strsplit(var_name, "_")[[1]][3]
-      grow_season_temp <- as.numeric(paste(strsplit(grow_season_temp, "")[[1]][1],
-                                           strsplit(grow_season_temp, "")[[1]][2], sep = "."))
-      mean_val[mean_val <= grow_season_temp] <- NA # to calculate below treeline
-      
-      plot(mean_val)
-      print("write again")
-      write_stars(mean_val, "tmp.grd", overwrite=TRUE, progress=T)
-      mean_val = read_stars("tmp.grd", proxy=F)
-      
-      gs_temp <- mean_val
-      gs_temp_pp <- make_minmax_polygon(mean_val)
-      plot(gs_temp_pp)
-      
-      
-      #
-      print("and again")
-      write_stars(gs_temp, fn_grd, overwrite=TRUE)
-      gs_temp <- read_stars(fn_grd, proxy=F)
-      
-      
-      
-      write_sf(gs_temp_pp, fn_pp, overwrite=TRUE)
-      
-      plot_grd(gs_temp, area, paste(prefix, 'temp_mask.png', sep="_"))
-      plot_grd(gs_temp_pp, area, paste(prefix, 'temp_pol.png', sep="_"))
-      
-    }else{
-      gs_temp <- read_stars(fn_grd, proxy=F)      
-      gs_temp_pp <- read_sf(fn_pp)
-      pp <- st_make_valid(pp)
-      
-    }
-    
-    
-    #########################################################################
-    print("make treeline model")
-    
-    # 
-    # plot(gs_length_pp)
-    # plot(gs_temp_pp)
-    plot(gs_length)
-    plot(gs_temp)
-    print(gs_length)
-    print(gs_temp)
-    print(class(gs_length))
-    print(class(gs_temp))
-    
-    # # make union of potentially alpine area
-    # 
-    # 
-    # print("make inverse")
-    # # I first calculate the area which is below the treeline, gs length > 94 and temp >6.4,
-    # # then I calculate the intersect, to see where both var meet, then get alpine by doing inverse
-    # grd_small_length = mask(gs_length, gs_length_pp, inverse = TRUE)
-    # plot(grd_small_length)
-    # 
-    # pp_small = union(gs_length_pp, gs_temp_pp)
-    # plot(pp_small)
-    # pp_small %>% 
-    #   group_by(ID_2) %>%
-    #   summarise(geometry = sf::st_union(geometry)) %>%
-    #   ungroup()
-    # 
-    # 
-    # ###############################33
-    plot(gs_length_pp)
-    plot(gs_temp_pp)
-    pp_small <- st_intersection(gs_length_pp, gs_temp_pp,  dimension = "polygon")  # 
-    pp_small = st_make_valid(pp_small)
-    pp_small = st_union(pp_small)
-    pp_small = st_make_valid(pp_small)
-    plot(pp_small)
-    
-    # grd_small <- st_intersection(gs_length, gs_temp,  dimension = "polygon")
-    # grd_small = st_make_valid(grd_small)
-    # grd_small = st_union(grd_small)
-    # grd_small = st_make_valid(grd_small)
-    
-    #st_set_dimensions(tmax_m1_y09_stars, 3, values = dates_ls_m1, names = "date")
-    gs_length.terra = as(gs_length, 'Raster') #+ terra::rast() 
-    gs_temp.terra = as(gs_temp, 'Raster') #+ terra::rast() 
-    
-    grd_small <- intersect(gs_length.terra, gs_temp.terra)
-    plot(grd_small)
-    
-    print("make inverse")
-    # I first calculate the area which is below the treeline, gs length > 94 and temp >6.4,
-    # then I calculate the intersect, to see where both var meet, then get alpine by doing inverse
-    
-    
-    print(grd_small)
-    pp.sp = as(pp_small, "Spatial")
-    # grd.terra = as(grd_small, 'Raster') + rast() 
-    grd.terra = mask(grd_small, pp.sp, inverse=TRUE)
-    grd_small = st_as_stars(grd.terra)
-    #grd_small = grd_small[!pp_small]
-    
-    
-    #grd_small = mask(grd_small, pp_small, inverse = TRUE)
-    plot(grd_small)
-    print(grd_small)
-    
-    grd_small_pp <- make_minmax_polygon(grd_small)
-    plot(grd_small_pp)
-    
-    plot_grd(grd_small, area, paste(prefix, 'mask.png', sep="_"))
-    plot_grd(grd_small_pp, area, paste(prefix, 'pol.png', sep="_"))
-    
-    fn_grd <- paste0(prefix, '_mask.grd')
-    fn_pp <- paste0(prefix, '_shape.shp')
-    
-    grd_small = st_as_stars(grd_small)
-    
-    write_stars(grd_small, fn_grd, overwrite=TRUE)
-    write_sf(grd_small_pp, fn_pp, overwrite=TRUE)
-    
-  }else{
-    grd_small_pp <- read_sf(paste(prefix, "shape.shp", sep="_"))
-  }
-  plot_grd(grd_small_pp, area, paste(prefix, 'pol.png', sep="_"))
-  return(grd_small_pp)
-}
-
-
-
-########################################################3
-# currenlty unused
-
-cut_to_continent.sf <- function(mask2, area){
-  print("cut past climate to continent - sf - not really working")
-  source(paste0(base, 'ClimateAnalyzer/00_set_variables.R'))
-  
-  if (area == 'SouthAmerica'){
-    sa <- rnaturalearth::ne_countries(continent = "South America", returnclass="sf")
-    na <- rnaturalearth::ne_countries(continent = "North America", returnclass="sf")
-    sa <- st_transform(sa,crs)
-    na <- st_transform(na,crs)
-    x <- st_join(sa, na)
-  }else if (area %in% c('EA', "Africa")){
-    af <- rnaturalearth::ne_countries(continent = "Africa", returnclass="sf")
-    #na = rnaturalearth::ne_countries(continent = "North America")
-    af <- st_transform(af,crs)
-    x <- af
-    #na <- st_transform(na,crs)
-    #x <- bind(sa, na)
-  }else if (area == 'Hawaii'){
-    na <- rnaturalearth::ne_countries(continent = "North America", returnclass="sf")
-    na <- st_transform(na,crs)
-    x <- na
-  }else if (area %in% c('Asia', "Kinabalu")){
-    sa <- rnaturalearth::ne_countries(continent = "Asia", returnclass="sf")
-    na <- rnaturalearth::ne_countries(continent = "Oceania", returnclass="sf")
-    sa <- st_transform(sa,crs)
-    na <- st_transform(na,crs)
-    x <- st_join(sa, na)
-  }
-  plot(x)
-  x = st_union(x)
-  plot(x)
-  plot(st_combine(x))
-  # mask_3_b <- raster::crop(mask2, extent(x))
-  ext2 <- st_bbox(get_extent_area(area, crs=crs))
-  mask_3_b <- st_crop(mask2, ext2, crop=T)
-  write_stars(mask_3_b, "mask_3b.grd")
-  plot(mask_3_b)
-  x = st_as_sf(x)
-  mask_3_b =  mask_3_b[x]
-  write_stars(mask_3_b, "mask_3bb.grd")
-  
-  #mask_3_b <- mask(mask_3_b, x)
-  return(mask_3_b)
-  
-}
