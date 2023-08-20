@@ -17,7 +17,7 @@ The scripts can also be adapted to any other region, or use of different bioclim
 4. make sure that the climate data is downloaded (see download_data.sh) and that the path to the raster layers is correcly provided (function 'get_path_data' in 00_set_your_data.R)
 5. run 01_set_analyses.R to get the areas delimited by the bioclimatic variables
 6. run 02_run_all_postanalyses.R to compare different areas to each other
-7. run 03_get_nicheheterogeneity.R to do a PCA and get the niche space per area
+7. run 03_get_climatespace.R to do a PCA and get the niche space per area
 
 ### Analyse your own region
 
