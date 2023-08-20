@@ -4,7 +4,7 @@
 
 ClimateAnalyzer is a set of script written in R to delimit areas based on bioclimatic variables. 
 
-The scripts have been developed to delimit tropical alpine areas based on bioclimatic variables from CHELSA. In order to repeat the analysis as presented in XXXXX, users have to rerun script 01 and 02. Script 01 is delimiting the areas based on the bioclimatic variables and script 02 compares different delimitations with each other.
+The scripts have been developed to delimit tropical alpine areas based on bioclimatic variables from CHELSA. In order to repeat the analysis as presented in Kandziora et al (under review) "The ghost of past climate acting on present-day plant diversity: lessons from a climate-based delimitation of the tropical alpine ecosystem", users have to rerun script 01 and 02. Script 01 is delimiting the areas based on the bioclimatic variables and script 02 compares different delimitations with each other.
 
 The scripts can also be adapted to any other region, or use of different bioclimatic variables to delimit certain areas.
 
