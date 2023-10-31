@@ -45,7 +45,7 @@ comparePolygons <- function(pp1, pp2, area, fn, tropical=FALSE){
      if(st_crs(ele) != st_crs(proj)){
        ele <- st_transform(ele, crs=crs(proj))
      }
-     ele = st_crop(ele, st_bbox(get_extent_area(area)))
+     ele = st_crop(ele, st_bbox(pp2))
      ele = st_as_stars(ele)
      ele.r = terra::rast(as(ele, "Raster"))
      
@@ -80,65 +80,58 @@ comparePolygons <- function(pp1, pp2, area, fn, tropical=FALSE){
      
      ext_bb = get_largest_extent(pol_list)
      print(ext_bb)
-     xmin <- ext_bb[1]
-     xmax <- ext_bb[3]
-     ymin <- ext_bb[2]
-     ymax <- ext_bb[4]
+     xmin <- ext_bb[1]-5
+     xmax <- ext_bb[3]+5
+     ymin <- ext_bb[2]-5
+     ymax <- ext_bb[4]+5
      #ext_bb = st_bbox(ele)
      
-     newmap <- getMap(resolution = "low")
-     newmap <- spTransform(newmap, CRSobj=crs(proj))
+  
+   ext <- raster(ncol=18000, nrow=9000, xmn=xmin, xmx=xmax, ymn=ymin, ymx=ymax, crs=crs)
+   afr2 = as(diff1, "Raster")
+   spdf <- as(afr2, "SpatialPixelsDataFrame")
+   mydf <- as.data.frame(spdf)
+   colnames(mydf) <- c("value", "x", "y")
+   wm=ne_countries(scale = 50, returnclass = "sf") 
+
+
+   p1 =   ggplot() +
      
-     png(fn)
-     plot(newmap, xlim = c(xmin, xmax), ylim = c(ymin, ymax),  lwd = 0.2) # Andes
-     plot(raster1,
-          col=colorRampPalette("#E69F00")(1),   # create a color ramp of grey colors
-          border=colorRampPalette("#E69F00")(1), 
-          legend=TRUE,
-          main="Extend1 - diff 1-2 - diff2-1 - orange/blue/red \n ",
-          #sub = areasizes_text,
-          axes=TRUE, add=TRUE)
-     legend("topleft", legend=areasizes_text)
-     
-     result <- try({
-     if(length(diffp2)>0){
-       plot(diff2,
-            col=colorRampPalette("#0072B2")(1), legend=FALSE,
-            border=colorRampPalette("#0072B2")(1),
-            add=TRUE)
-     }
-     
-     if(length(diffp1)>0){
-       plot(diff1,
-            col=colorRampPalette("#9E0037")(1), legend=FALSE,
-            border=colorRampPalette("#9E0037")(1),
-            add=TRUE)
-     }
-     }, silent = TRUE)
-     dev.off()
-     
-     #######
-     png(paste0("pol_", fn))
-     plot(newmap, xlim = c(xmin, xmax), ylim = c(ymin, ymax), lwd = 0.2) # Andes
-     plot(diffp1,
-          col=colorRampPalette("#9E0037")(1), 
-          border= colorRampPalette("#9E0037")(1),   # create a color ramp of grey colors
-          legend=TRUE,
-          #sub = areasizes_text,
-          axes=TRUE, add=TRUE)
-     plot(diffp2,
-          col=colorRampPalette("#0072B2")(1),
-          border=colorRampPalette("#0072B2")(1), legend=FALSE, 
-          add=TRUE)
-     plot(pp.intersect,
-          col=colorRampPalette("#E69F00")(1),   # create a color ramp of grey colors
-          border=colorRampPalette("#E69F00")(1), 
-          legend=TRUE,
-          main="Extend1 - diff 1-2 - diff2-1 - orange/blue/red \n ",
-          #sub = areasizes_text,
-          axes=TRUE, add=TRUE)
-     dev.off()
-    
+     geom_sf(data = wm, colour="black", fill=NA, lwd=0.11) + # , alpha=1
+     coord_sf(xlim = c(xmin, xmax), ylim = c(ymin, ymax))+
+     ggspatial::annotation_scale(location = "br")+
+     scale_x_continuous(limits = c(xmin, xmax), expand = c(0, 0)) +
+     scale_y_continuous(limits = c( ymin, ymax), expand = c(0, 0))+
+     theme(panel.background = element_blank(),
+           axis.title.x = element_blank(),
+           axis.title.y = element_blank())
+p1 = p1 + 
+     geom_stars(
+       data = raster1,
+       na.action=na.omit,
+       aes(x = x, y = y), fill="#E69F00")#+
+   if(length(diffp2)>0){
+     p1 = p1 + geom_stars(data = diff2,  na.action=na.omit, fill="#0072B2") +  #blue
+       geom_sf(data = sf::st_as_sf(diffp2),
+               col = "#0072B2", 
+               fill="#0072B2", lwd=0.051
+            #    linewidth = 0.2
+       )
+   }
+
+
+   if(length(diffp1)>0){
+     p1 = p1 + geom_stars(data = diff1,  na.action=na.omit, fill="#990000")+ # red
+       geom_sf(data = sf::st_as_sf(diffp1),
+               col = "#990000", 
+               fill="#990000",lwd=0.051
+             #  linewidth = 0.2
+       )
+   }
+ 
+   p1
+   ggsave(fn,plot=p1,  dpi=600)
+   
 }
 
 
@@ -221,5 +214,4 @@ get_area_size2.sameproj<- function(pp){
   print(paste("Area:", round(area.calc, digits=1),"km2; projection:", crs(pp)))
   return(area.calc)
 }
-
 

@@ -39,7 +39,7 @@ fix_crs_future <- function(climatename, area, wd){
 }
 
 
-MakeCombinePolygons <- function(area, pol_comb_list){
+MakeCombinePolygons <- function(area, pol_comb_list, climatename){
   
   prefix <- fn_prefix(pol_comb_list)
   fn_pp <- paste(prefix, 'shape.shp', sep="_")
@@ -90,7 +90,7 @@ MakeCombinePolygons <- function(area, pol_comb_list){
         print("rasterize combined polygon")
         ele <- get_elevation(area, zoom_level, crs, res)
 
-        fn = paste0(elem_comb, "elevation.RDA")
+        fn = paste0(elem_comb, climatename, "elevation.RDA")
         grd_small <- rasterize_polygon(pol_comb_list, pp_small, ele, fn)
         plot_grd(pp_small, area, paste(elem_comb, 'pol.png', sep="_"))
       }
@@ -674,4 +674,3 @@ recalculate_past_climate <- function(clim1, climatename1){
   }
   return(clim1)
 }
-

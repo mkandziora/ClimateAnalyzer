@@ -136,7 +136,7 @@ make_pol <- function(var_name, climatename, area){
     setwd(area)
     setwd(climatename)
     setwd(prefix)
-    pp <- MakeCombinePolygons(area, var_name)
+    pp <- MakeCombinePolygons(area, var_name, climatename)
     print(pp)
     #print(st_dimension(pp))
     
@@ -177,8 +177,8 @@ compare_extent <-function(var_name1, var_name2, area1, climatename1,
   print(prefix1)
   setwd(prefix1)
   pol1 <- make_pol(var_name1, climatename1, area1)
-  fn1 = paste0(prefix1, "elevation.RDA")
-  ele1 = rasterize_polygon(var_name1, pol1, ele, fn1)
+  fn1 = paste(prefix1, climatename1, "elevation.RDA", sep="_")
+ 
   plot(pol1)
   clim1 <- generate_climate_data_polygon(var_name1, climatename1, area1, tropical=FALSE)
   
@@ -190,8 +190,9 @@ compare_extent <-function(var_name1, var_name2, area1, climatename1,
   setwd(climatename2)
   setwd(prefix2)
   pol2 <- make_pol(var_name2, climatename2, area2)
-  fn2 = paste0(prefix2, "elevation.RDA")
-  ele2 = rasterize_polygon(var_name2, pol2, ele, fn2)
+  fn2 = paste(prefix2,  climatename2, "elevation.RDA",sep="_")
+ 
+  #clim2 <- generate_climate_data_polygon(var_name2, climatename2, area2, tropical=TRUE)
   clim2 <- generate_climate_data_polygon(var_name2, climatename2, area2, tropical=FALSE)
   
   setwd(main_wd)
@@ -285,9 +286,11 @@ boxplot_all_area <- function(var_name1, area1, area2, area3, area4, climatename,
                               "Hawaii" = "tropalpHawaii"))+
     scale_color_manual(values=c("orange", "#FC4E07",  "#00AFBB", "purple"))+
     theme(axis.title.x=element_blank())
+  
+ p = p + stat_compare_means(comparisons = my_comparisons, label="p.signif",  size =2)
 
  p 
-  ggsave(paste("boxplot_climate_all", prefix1, climatename, ".png", sep="_"))
+  ggsave(paste("boxplot_climate_all", prefix1, climatename, ".png", sep="_"), width=10, height = 10, dpi=400)
 }
 
   
@@ -349,7 +352,7 @@ boxplot_all_climate2 <- function(var_name1,  area_list, climatename1, climatenam
   p <- ggplot(d2, aes(area, values, fill=group)) +
     geom_boxplot(aes(fill=group), show.legend = TRUE)  +
     facet_wrap(~ind, scales='free_y', ncol=3) + theme(legend.position="bottom") 
-  p = p + #stat_compare_means(comparisons = my_comparisons, label="p.signif",  size =2)+
+  p = p + stat_compare_means(comparisons = my_comparisons, label="p.signif",  size =2)+
     theme(axis.text.x = element_text(angle = 45, hjust=0.75) ) +
    scale_x_discrete(labels = c('tropalpAndes','tropalpAsia','Afroalpine'))+
     scale_fill_discrete(labels=c("current", "MIROC", "MPI"))+

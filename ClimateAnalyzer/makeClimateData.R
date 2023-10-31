@@ -132,12 +132,12 @@ make_pca <- function(var_name, climatename){
   glob <- na.omit(presvals_all[,1:19])
   # make pca
   pca.glob <-  ade4::dudi.pca( glob,scannf=F,nf=2)
-  fviz_contrib(pca.glob, choice = "var", axes = 1, top = 10)
-  fviz_pca_var(pca.glob)
+  factoextra::fviz_contrib(pca.glob, choice = "var", axes = 1, top = 10)
+  factoextra::fviz_pca_var(pca.glob)
 
   png(paste(prefix, "glob_pca_contribution.png", sep="_"))
-  fviz_contrib(pca.glob, choice = "var", axes = 1, top = 10)
-  fviz_pca_var(pca.glob)
+  factoextra::fviz_contrib(pca.glob, choice = "var", axes = 1, top = 10)
+  factoextra::fviz_pca_var(pca.glob)
   dev.off()
   
   pca.test <- prcomp(glob)
@@ -228,8 +228,8 @@ make_uncorrelated_pca <- function(var_name, glob){
   #ecospat.plot.contrib(contrib=pca.globsubset$co, eigen=pca.globsubset$eig)
   
   png(paste(prefix, "uncorrelated_glob_pca_contribution.png", sep="_"))
-  fviz_contrib(pca.globsubset, choice = "var", axes = 1, top = 10)
-  fviz_pca_var(pca.globsubset)
+  factoextra::fviz_contrib(pca.globsubset, choice = "var", axes = 1, top = 10)
+  factoextra::fviz_pca_var(pca.globsubset)
   dev.off()
   
   # contributions of var to PCA axes
@@ -262,5 +262,4 @@ make_uncorrelated_pca <- function(var_name, glob){
 
   return(glob_new)
 }
-
 
