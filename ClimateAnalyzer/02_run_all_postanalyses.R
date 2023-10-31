@@ -137,7 +137,6 @@ climatename2 = 'chelsa_miroc_esm'
 climatename3 <- "mpi-esm"
 
 var_name1 <- var_listalp
-var_name2 = "elevation"
 area_sublist = list("SouthAmerica", "Asia", "Africa")
 boxplot_all_climate2(var_name1,  area_sublist, climatename1, climatename2, climatename3)
 
