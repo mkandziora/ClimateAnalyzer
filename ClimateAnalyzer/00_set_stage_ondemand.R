@@ -56,6 +56,8 @@ require(ggfortify, lib.loc = path_to_libraries, attach.required = T)
 require(cubelyr, lib.loc = path_to_libraries, attach.required = T)
 require(fasterize, lib.loc = path_to_libraries, attach.required = T)
 require(terra, lib.loc = path_to_libraries, attach.required = T)
+
+require(RStoolbox, lib.loc = path_to_libraries, attach.required = T)
 require(future, lib.loc = path_to_libraries, attach.required = T)
 
 
