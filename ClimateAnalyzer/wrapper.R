@@ -202,11 +202,16 @@ compare_extent <-function(var_name1, var_name2, area1, climatename1,
     
     setwd(area1)
     fn <- paste(area1, prefix1, prefix2, climatename1, climatename2 , "overlap_area.png", sep="_")
-    plot(pol1)
-    plot(pol2, add=T)
+
     comparePolygons(pol1, pol2, area1, fn, tropical=FALSE)
     
     fn <- paste(area1, prefix1, prefix2, climatename1, climatename2 , "overlap_hist.png", sep="_")
+    
+        ele.main <- get_elevation(area1, zoom_level, crs, res)
+    assign("ele.main", ele.main, envir = .GlobalEnv)
+    ele = ele.main
+    ele1 = rasterize_polygon(var_name1, pol1, ele, fn1)
+    ele2 = rasterize_polygon(var_name2, pol2, ele, fn2)
     compare_hist(ele1, ele2, area1, fn, tropical=FALSE)
   }
   print("compare climate")
